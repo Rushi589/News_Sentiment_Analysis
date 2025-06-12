@@ -1,0 +1,138 @@
+import streamlit as st
+import pickle
+import string
+from nltk.corpus import stopwords
+import nltk
+from nltk.stem.porter import PorterStemmer
+import base64
+
+nltk.download('stopwords')
+nltk.download('punkt')
+
+ps = PorterStemmer()
+
+# Function to preprocess text
+def transform_text(text):
+    text = text.lower()
+    text = nltk.word_tokenize(text)
+
+    y = []
+    for i in text:
+        if i.isalnum():
+            y.append(i)
+
+    text = y[:]
+    y.clear()
+
+    for i in text:
+        if i not in stopwords.words('english') and i not in string.punctuation:
+            y.append(i)
+
+    text = y[:]
+    y.clear()
+
+    for i in text:
+        y.append(ps.stem(i))
+
+    return " ".join(y)
+
+# Load the pre-trained models
+model = pickle.load(open('model (4).pkl', 'rb'))
+tfidf = pickle.load(open('tfidf (4).pkl', 'rb'))
+
+# Custom CSS for background
+page_bg_img = '''
+<style>
+.stApp {
+    background-image: url("https://www.transparenttextures.com/patterns/fabric-of-squares.png");
+    background-size: cover;
+}
+</style>
+'''
+st.markdown(page_bg_img, unsafe_allow_html=True)
+
+# Sidebar with information and a link
+st.sidebar.title("Sentiment Analysis")
+st.sidebar.info(
+    "This application uses Natural Language Processing (NLP) to analyze the sentiment of stock news. "
+    "Simply enter the news headline or text in the box below, and the model will classify it as Positive or Negative."
+)
+
+# Add a hyperlink to a stock news channel in the sidebar
+st.sidebar.markdown(
+    "[Visit CNBC for Latest Stock News](https://www.cnbc.com/markets/)",
+    unsafe_allow_html=True
+)
+
+# Display the logo and the college name in the header
+logo_path = "ghrcemnewlogo.png"  # Ensure the correct path or upload logo
+
+# Custom CSS for header alignment and font sizing
+st.markdown(
+    """
+    <style>
+    .header {
+        display: flex;
+        align-items: center;
+    }
+    .header img {
+        width: 150px;
+        height: auto;
+        margin-right: 20px;
+    }
+    .header h1 {
+        font-size: 38px;  /* Larger for college name */
+        margin: 0;
+        padding-left: 10px;
+    }
+    .analyzer-title {
+        font-size: 28px;  /* Smaller than college name but larger than other text */
+        color: #333;
+        margin-top: 20px;
+    }
+    .subheader {
+        font-size: 20px;  /* Smaller than sentiment analyzer title */
+        color: #666;
+        margin-top: 15px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Create a header section with logo and college name
+st.markdown(
+    f"""
+    <div class="header">
+        <img src="data:image/png;base64,{base64.b64encode(open(logo_path, "rb").read()).decode()}" alt="GHRCEM Logo">
+        <h1>GH Raisoni College Of Engineering, Pune</h1>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Main title for Stock News Sentiment Analyzer with adjusted size
+st.markdown("<h2 class='analyzer-title'>📈 Stock News Sentiment Analyzer</h2>", unsafe_allow_html=True)
+
+# Subheader for instructions with smaller font size
+st.markdown("<h3 class='subheader'>Enter the news headline or text you'd like to analyze:</h3>", unsafe_allow_html=True)
+
+# Input box for news text
+input_news = st.text_area("Type your news here...", height=150)
+
+# Analyze button
+if st.button('Analyze Sentiment'):
+    # 1. Preprocess the input text
+    transformed_news = transform_text(input_news)
+    # 2. Vectorize the transformed text
+    vector_input = tfidf.transform([transformed_news]).toarray()
+    # 3. Predict the sentiment
+    result = model.predict(vector_input)[0]
+
+    # 4. Display the result with sentiment and action
+    if result == 1:
+        st.success("🟢 The sentiment is Positive!")
+        st.info("Action: Market Expecting as Positive move.")
+    else:
+        st.error("🔴 The sentiment is Negative.")
+        st.info("Action: Market Expecting as Negative move.")
